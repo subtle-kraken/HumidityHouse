@@ -1,0 +1,74 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+// 🔹 Définition des identifiants WiFi
+const char* ssid = "TON_WIFI";  // ⚠️ Remplace par ton WiFi
+const char* password = "TON_MOT_DE_PASSE";  // ⚠️ Remplace par ton mot de passe WiFi
+
+// 🔹 Définition de l'URL Firebase (avec `/data.json`)
+const char* firebaseURL = "https://esp32-data-xxxxxxxxxxxxxxxxxxx.firebasedatabase.app/data.json";  // ⚠️ Remplace par ton URL Firebase
+
+void setup() {
+  Serial.begin(115200);
+  Serial2.begin(115200, SERIAL_8N1, 16, 17); // RX2 = GPIO 16
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connexion au WiFi...");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.print(".");
+  }
+
+  Serial.println("\n✅ WiFi connecté !");
+}
+
+void loop() {
+  if (Serial2.available()) {
+    String data = Serial2.readStringUntil('\n');
+    data.trim();
+
+    Serial.println("📩 Données reçues de l’Uno : " + data);
+
+    int sep = data.indexOf(',');
+    if (sep != -1) {
+      String temp = data.substring(0, sep);
+      String hum = data.substring(sep + 1);
+
+      Serial.print("📡 Température : ");
+      Serial.print(temp);
+      Serial.print("°C | Humidité : ");
+      Serial.print(hum);
+      Serial.println("%");
+
+      if (temp.length() > 0 && hum.length() > 0) {
+        // 🔹 Construction du JSON
+        String payload = "{\"temperature\":" + temp + ",\"humidity\":" + hum + "}";
+
+        Serial.println("🌍 Envoi des données à Firebase : " + payload);
+
+        if (WiFi.status() == WL_CONNECTED) {
+          HTTPClient http;
+          http.begin(firebaseURL);  // ✅ `firebaseURL` est bien défini ici
+          http.addHeader("Content-Type", "application/json");
+          int httpCode = http.PUT(payload);  // 🔹 Utilise `PUT` pour remplacer les données
+
+          if (httpCode > 0) {
+            Serial.println("✅ Données envoyées avec succès sur Firebase !");
+          } else {
+            Serial.print("❌ Erreur d'envoi des données ! Code HTTP : ");
+            Serial.println(httpCode);
+          }
+
+          http.end();
+        } else {
+          Serial.println("❌ WiFi déconnecté !");
+        }
+      } else {
+        Serial.println("❌ Valeurs invalides reçues !");
+      }
+    }
+  }
+
+  delay(5000);
+}
