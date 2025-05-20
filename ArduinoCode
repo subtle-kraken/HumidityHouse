@@ -1,0 +1,102 @@
+#include <DHT.h>
+#include <Wire.h>
+#include <RTClib.h>
+#include <SD.h>
+
+#define DHT11_PIN A0  // Pin A0 pour le DHT11
+#define SD_CS_PIN 10  // Pin de sélection de la carte SD (chip select)
+
+DHT dht(DHT11_PIN, DHT11);
+RTC_DS1307 RTC;  // Crée un objet RTC pour le DS1307
+
+void setup(){
+  Serial.begin(9600);
+
+  // Initialiser la carte SD
+  if (!SD.begin(SD_CS_PIN)) {
+    Serial.println("Erreur de carte SD");
+    return;
+  }
+  Serial.println("Carte SD initialisée");
+
+  // Initialiser le module RTC
+  if (!RTC.begin()) {
+    Serial.println("Erreur RTC");
+    while (1);  // Boucle infinie si le RTC n'est pas trouvé
+  }
+
+  if (!RTC.isrunning()) {
+    Serial.println("RTC n'est pas en marche, initialisation...");
+    RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));  // Initialiser le RTC avec l'heure de la compilation
+  }
+
+  Serial.println("RTC fonctionne correctement");
+
+  dht.begin(); // Initialiser le capteur DHT
+}
+
+void loop()
+{
+  // Lire la date et l'heure du RTC
+  DateTime now = RTC.now();
+
+  // Lire l'humidité et la température du capteur DHT
+  float humidity = dht.readHumidity();
+  float temperature = dht.readTemperature();
+
+  // Vérifier si la lecture a échoué
+  if (isnan(humidity) || isnan(temperature)) {
+    Serial.println("Erreur de lecture du capteur !");
+    return;
+  }
+
+  // Afficher les données dans le moniteur série
+  Serial.print("Temperature = ");
+  Serial.println(temperature);
+  Serial.print("Humidity = ");
+  Serial.println(humidity);
+  Serial.print("Date and Time: ");
+  Serial.print(now.day(), DEC);
+  Serial.print("/");
+  Serial.print(now.month(), DEC);
+  Serial.print("/");
+  Serial.print(now.year(), DEC);
+  Serial.print(" ");
+  Serial.print(now.hour(), DEC);
+  Serial.print(":");
+  Serial.print(now.minute(), DEC);
+  Serial.print(":");
+  Serial.println(now.second(), DEC);
+
+  // Ouvrir ou créer le fichier "data.csv" sur la carte SD
+  File dataFile = SD.open("data.csv", FILE_WRITE);
+
+  // Si le fichier est ouvert correctement, écrire dedans
+  if (dataFile) {
+    // Écrire les données de la date, heure, température et humidité dans un format CSV
+    dataFile.print(now.day(), DEC);
+    dataFile.print("/");
+    dataFile.print(now.month(), DEC);
+    dataFile.print("/");
+    dataFile.print(now.year(), DEC);
+    dataFile.print(" ");
+    dataFile.print(now.hour(), DEC);
+    dataFile.print(":");
+    dataFile.print(now.minute(), DEC);
+    dataFile.print(":");
+    dataFile.print(now.second(), DEC);
+    dataFile.print(",");
+    dataFile.print(temperature);
+    dataFile.print(",");
+    dataFile.println(humidity);
+    dataFile.close(); // Fermer le fichier après l'écriture
+
+    // Confirmation de l'écriture dans le moniteur série
+    Serial.println("Données écrites sur la carte SD");
+  } else {
+    Serial.println("Erreur d'ouverture du fichier");
+  }
+
+  // Attendre 5 minutes avant la prochaine lecture (300 000 millisecondes)
+  delay(300000);  // 5 minutes = 300 000 millisecondes
+}
