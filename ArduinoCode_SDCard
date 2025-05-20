@@ -3,54 +3,54 @@
 #include <RTClib.h>
 #include <SD.h>
 
-#define DHT11_PIN A0  // Pin A0 pour le DHT11
-#define SD_CS_PIN 10  // Pin de sélection de la carte SD (chip select)
+#define DHT11_PIN A0      // Pin A0 for the DHT11 sensor
+#define SD_CS_PIN 10      // Chip select pin for the SD card
 
 DHT dht(DHT11_PIN, DHT11);
-RTC_DS1307 RTC;  // Crée un objet RTC pour le DS1307
+RTC_DS1307 RTC;  // Create an RTC object for the DS1307
 
 void setup(){
   Serial.begin(9600);
 
-  // Initialiser la carte SD
+  // Initialize the SD card
   if (!SD.begin(SD_CS_PIN)) {
-    Serial.println("Erreur de carte SD");
+    Serial.println("SD card error");
     return;
   }
-  Serial.println("Carte SD initialisée");
+  Serial.println("SD card initialized");
 
-  // Initialiser le module RTC
+  // Initialize the RTC module
   if (!RTC.begin()) {
-    Serial.println("Erreur RTC");
-    while (1);  // Boucle infinie si le RTC n'est pas trouvé
+    Serial.println("RTC error");
+    while (1);  // Infinite loop if RTC is not found
   }
 
   if (!RTC.isrunning()) {
-    Serial.println("RTC n'est pas en marche, initialisation...");
-    RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));  // Initialiser le RTC avec l'heure de la compilation
+    Serial.println("RTC is not running, initializing...");
+    RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));  // Set RTC to compile time
   }
 
-  Serial.println("RTC fonctionne correctement");
+  Serial.println("RTC is working correctly");
 
-  dht.begin(); // Initialiser le capteur DHT
+  dht.begin();  // Initialize the DHT sensor
 }
 
 void loop()
 {
-  // Lire la date et l'heure du RTC
+  // Read date and time from the RTC
   DateTime now = RTC.now();
 
-  // Lire l'humidité et la température du capteur DHT
+  // Read humidity and temperature from the DHT sensor
   float humidity = dht.readHumidity();
   float temperature = dht.readTemperature();
 
-  // Vérifier si la lecture a échoué
+  // Check if the reading failed
   if (isnan(humidity) || isnan(temperature)) {
-    Serial.println("Erreur de lecture du capteur !");
+    Serial.println("Sensor reading error!");
     return;
   }
 
-  // Afficher les données dans le moniteur série
+  // Print data to the serial monitor
   Serial.print("Temperature = ");
   Serial.println(temperature);
   Serial.print("Humidity = ");
@@ -68,12 +68,12 @@ void loop()
   Serial.print(":");
   Serial.println(now.second(), DEC);
 
-  // Ouvrir ou créer le fichier "data.csv" sur la carte SD
+  // Open or create "data.csv" on the SD card
   File dataFile = SD.open("data.csv", FILE_WRITE);
 
-  // Si le fichier est ouvert correctement, écrire dedans
+  // If the file opened correctly, write to it
   if (dataFile) {
-    // Écrire les données de la date, heure, température et humidité dans un format CSV
+    // Write date, time, temperature, and humidity in CSV format
     dataFile.print(now.day(), DEC);
     dataFile.print("/");
     dataFile.print(now.month(), DEC);
@@ -89,14 +89,14 @@ void loop()
     dataFile.print(temperature);
     dataFile.print(",");
     dataFile.println(humidity);
-    dataFile.close(); // Fermer le fichier après l'écriture
+    dataFile.close();  // Close the file after writing
 
-    // Confirmation de l'écriture dans le moniteur série
-    Serial.println("Données écrites sur la carte SD");
+    // Confirm successful writing in serial monitor
+    Serial.println("Data written to SD card");
   } else {
-    Serial.println("Erreur d'ouverture du fichier");
+    Serial.println("File open error");
   }
 
-  // Attendre 5 minutes avant la prochaine lecture (300 000 millisecondes)
-  delay(300000);  // 5 minutes = 300 000 millisecondes
+  // Wait 5 minutes before the next reading (300,000 milliseconds)
+  delay(300000);  // 5 minutes = 300,000 milliseconds
 }
